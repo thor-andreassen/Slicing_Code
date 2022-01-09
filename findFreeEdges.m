@@ -1,4 +1,13 @@
 function [free_edges,watertight] = findFreeEdges(edges)
+        % Function to determine free edges of mesh and if mesh is
+        % watertight
+        % function takes in a matrix of edge connections as a (n x 2)
+        % matrix, and returns a list of (m x 2) free edges if there are
+        % any. Free edges are defined as any edges that are only connected
+        % to a single face, and therefore only appear once in the edges
+        % list. The function also returns a "watertight" measure, that
+        % defines if the entire list of edges is watertight. This is true
+        % if there are no free edges, and false if there are free edges.
         sort_edges=sort(edges,2);
         [B,ix] = sortrows(sort_edges);
         f = find(diff([false;all(diff(B,1,1)==0,2);false])~=0);
