@@ -1,4 +1,4 @@
-function [face_normal,face_area,face_centroid]=findFaceNormalArea(face_nodes)
+function [face_normal,face_area,face_centroid]=findTriFaceNormalArea(face_nodes)
 %% Function to calculate area and normal of Tri Element
 % Created by Thor Andreassen
 % 1/8/22

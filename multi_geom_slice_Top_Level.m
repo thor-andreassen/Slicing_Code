@@ -19,7 +19,7 @@ clc
         pixel_bounds=[5,5,5];
 
         %% load stl
-load_stl=0;
+load_stl=1;
 if load_stl==1
 %         filenames={'VHFL_Left_Bone_Femur.stl',...
 %                 'VHFL_Muscle_VastusMedialis.stl',...
