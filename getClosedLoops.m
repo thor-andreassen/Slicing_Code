@@ -1,4 +1,31 @@
 function [loop_segments,closed_loops,num_sets]=getClosedLoops(plane_segment_ids)
+%% function to calculate the set of closed loops based on an array of edges
+        % Created by Thor Andreassen
+        % 1/10/22
+        %
+        % This function takes in a matrix containing all of the edges at a
+        % current "slice" as node number connections for the ends of each
+        % line segment, and determines the set of closed loops for each set
+        % of segments.
+        %
+        %
+        % Inputs:
+                % plane_segment_ids: A matrix of (n x 2) integers,
+                        % containing the node numbers at the end of each line
+                        % segment. With each row corresponding to another line
+                        % segment, and each column corresponding to one of the
+                        % node numbers on the ends of the line segment
+        %
+        %
+        % Outputs:
+                % loop_segments: A cell array containing each of the loops
+                        % as separe array matrices in each cell.
+                % closed_loops: An array corresponding to the number of
+                        % loops in the loop_segments output, where a 1 is present
+                        % if the loop is closed, and a 0 if it is not
+                        % closed.
+                % num_sets: an integer containing the number of closed loop
+                        % sets.
         closed_loops=[];       
         plane_segment_ids2=plane_segment_ids;
         loop_segments={};
