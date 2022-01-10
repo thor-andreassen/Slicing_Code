@@ -1,5 +1,7 @@
 function [edges]=findTriEdgesMesh(faces)
 %% function to find the edges of a triangulated mesh
+% Created by Thor Andreassen
+% 1/10/22
 % the function takes in a series of connections define the edge node
 % connections of a triangulated mesh, and returns a matrix containing all
 % of the edge definitions for the matrix.
