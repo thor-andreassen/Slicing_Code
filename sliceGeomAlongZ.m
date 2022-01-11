@@ -61,7 +61,10 @@ sliceGeomAlongZ(geom,x_slices, y_slices,z_slices,slice_bin_vol,slices_bin_vol)
                         % contained in a solid part of the original
                         % geometry, and a 0 wherever there is no geometry
                         % present.
-                
+                        
+                        % the following line is used to initialize the
+                        % outputs if they are not previously passed in from
+                        % an additive matrix from the calling function.
         if nargin < 5
                 x_spacing=x_slices(2)-x_slices(1);
                 y_spacing=y_slices(2)-y_slices(1);
@@ -75,98 +78,14 @@ sliceGeomAlongZ(geom,x_slices, y_slices,z_slices,slice_bin_vol,slices_bin_vol)
                 slices_bin_vol=logical(zeros(total_pix_num(2)+1,total_pix_num(1)+1,length(z_slices)));
         end
         %% Create Slices
+        % the following section is the main portion of the code to slice
+        % the geometry along z_Sliced planes by determining the
+        % intersection between the faces of the mesh and a plane made at
+        % the current slice.
         plane_vec=[0,0,1]';
         slice_sets={};
-        parfor count_slice=1:length(z_slices)
-        % for count_slice=1:length(z_slices)
-                plane_point=[0,0,z_slices(count_slice)];
-                current_vertex=geom.vertices-plane_point;
-                vert_dir=sign(current_vertex*plane_vec);
-                elems_list=[];
-                % the following lines determine all element with either a a vertext
-                % on the plane, or part of the face cuts the plane
-                for count_elems=1:size(geom.faces,1)
-                        nodel=geom.faces(count_elems,:);
-                        if vert_dir(nodel(1)) ~= vert_dir(nodel(2)) || ...
-                                        vert_dir(nodel(2)) ~= vert_dir(nodel(3))
-                                elems_list=[elems_list;geom.faces(count_elems,:)];
-                        elseif vert_dir(nodel(1)) ==0 &&...
-                                        vert_dir(nodel(2)) ==0 &&...
-                                        vert_dir(nodel(3)) ==0
-                                elems_list=[elems_list;geom.faces(count_elems,:)];
-                        end
-                end
-                % have a list of all elements that cut the current plane
-                points_vec=[];
-                segments_vec={};
-                counter=1;
-                for count_elems_plane=1:size(elems_list,1)
-                        nodel=elems_list(count_elems_plane,:);
-                        temp_vertices=geom.vertices(nodel,:);
-                        current_vert_dir=vert_dir(nodel);
-                         % the following statements check if the vertex is on the
-                         % plane
-        %                 if current_vert_dir(1)==0
-        %                         points_vec=[points_vec;temp_vertices(1,:)];
-        %                 end
-        %                 if current_vert_dir(2)==0
-        %                         points_vec=[points_vec;temp_vertices(2,:)];
-        %                 end
-        %                 if current_vert_dir(3)==0
-        %                         points_vec=[points_vec;temp_vertices(3,:)];
-        %                 end
-                        % the following lines determine where the edge interesects
-                        % the plane
-                        current_pt=[];
-                        if current_vert_dir(1) ~= current_vert_dir(2)
-                                intersect_point_x=interp1([temp_vertices(1,3),temp_vertices(2,3)],...
-                                        [temp_vertices(1,1),temp_vertices(2,1)],z_slices(count_slice));
-                                intersect_point_y=interp1([temp_vertices(1,3),temp_vertices(2,3)],...
-                                        [temp_vertices(1,2),temp_vertices(2,2)],z_slices(count_slice));
-                                intersect_point=[intersect_point_x,intersect_point_y,z_slices(count_slice)];
-                                points_vec=[points_vec;intersect_point];
-                                current_pt=[current_pt;intersect_point];
-                        end
-                        if current_vert_dir(1) ~= current_vert_dir(3)
-                                intersect_point_x=interp1([temp_vertices(1,3),temp_vertices(3,3)],...
-                                        [temp_vertices(1,1),temp_vertices(3,1)],z_slices(count_slice));
-                                intersect_point_y=interp1([temp_vertices(1,3),temp_vertices(3,3)],...
-                                        [temp_vertices(1,2),temp_vertices(3,2)],z_slices(count_slice));
-                                intersect_point=[intersect_point_x,intersect_point_y,z_slices(count_slice)];
-                                points_vec=[points_vec;intersect_point];
-                                current_pt=[current_pt;intersect_point];
-                        end
-                        if current_vert_dir(2) ~= current_vert_dir(3)
-                                intersect_point_x=interp1([temp_vertices(2,3),temp_vertices(3,3)],...
-                                        [temp_vertices(2,1),temp_vertices(3,1)],z_slices(count_slice));
-                                intersect_point_y=interp1([temp_vertices(2,3),temp_vertices(3,3)],...
-                                        [temp_vertices(2,2),temp_vertices(3,2)],z_slices(count_slice));
-                                intersect_point=[intersect_point_x,intersect_point_y,z_slices(count_slice)];
-                                points_vec=[points_vec;intersect_point];
-                                current_pt=[current_pt;intersect_point];
-                        end
-                        if ~isempty(current_pt)
-                                segments_vec{counter}=current_pt;
-                                counter=counter+1;
-                        end
-                end
-        %         if ~isempty(points_vec)
-        %                 clf
-        %                 plot(points_vec(:,1),points_vec(:,2),'ro');
-        %                 xlim([min_bound_vertices(1), max_bound_vertices(1)]);
-        %                 ylim([min_bound_vertices(2), max_bound_vertices(2)]);
-        %                 axis equal
-        %                 hold on
-        %                 current_slice=segments_vec;
-        %                 for count_segment=1:length(current_slice)
-        %                         line_segment=current_slice{count_segment};
-        %                         plot(line_segment(:,1),line_segment(:,2),'k');
-        %                         hold on
-        %                 end
-        %                 pause(.001);
-        %         end
-                slice_sets{count_slice}=segments_vec;
-        end
+        use_parallel=1;
+        [slice_sets]=getSliceSetsInZ(geom,z_slices,use_parallel);
         %% create boundaries plots
         % for count_slice=185%1:length(slice_sets)
         %         
