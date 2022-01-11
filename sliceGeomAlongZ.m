@@ -1,26 +1,99 @@
-function [slice_sets,slices_loops,slices_polygons,polygon_inside_mat,tree_array,slices_bin_vol]=...
-sliceGeomAlongZ(geom_rot,x_slices, y_slices,z_slices,slice_bin_vol,slices_bin_vol)
-
+function [slice_sets,slices_loops,slices_polygons,slices_bin_vol]=...
+sliceGeomAlongZ(geom,x_slices, y_slices,z_slices,slice_bin_vol,slices_bin_vol)
+        %% Main Slicing Function to slice a geometry according to the slice parameters and create a binary mesh
+        % Created by Thor Andreassen
+        % 1/10/22
+        %
+        %
+        % This function uses a series of steps to slice a geometry into a series of binary matrices
+        % The function takes in a geometry that is assumed to be aligned
+        % with the desired slice direction as the "z-direction" of the
+        % mesh, and then takes in parameters defining the mesh slices
+        % locations. The result is a set of slice geometries and contour
+        % polygons as well as a matrix of binary values for regions
+        % "inside" and "outside" the slice.
+        %
+        %
+        % Inputs:
+                % geom: a structure defining the current mesh surface to be
+                        % sliced as the following:
+                                % geom.faces = (n x 3) connectivity list of
+                                        % triangulated mesh curfaces defining the
+                                        % corner nodes of each face as a row
+                                % geom.vertices = (m x 3) matrix of x, y, z
+                                        % coordinates of all vertices/nodes used to
+                                        % define the mesh surface. Each row
+                                        % corresponds to the node number of the
+                                        % mesh defined in "faces"
+                % x_slices: a vector containing all of the x coordinates to
+                        % turn into the x- spacing pixels of the final image.
+                % y_slices: a vector containing all of the y coordinates to
+                        % turn into the y- spacing pixels of the final image.
+                % z_slices: a vector containing all of the z coordinates
+                        % that define the resulting slices of the algorithm
+                % slice_bin_vol: a previously define binary logic matrix
+                        % representing a single slice of the resulting slices
+                        % the size of this matrix is (length(x_slices) x length(y_slices))
+                        % (optional)
+                % slices_bin_vol a previously define binary logic matrix
+                        % representing all of the slice values of the resulting slices
+                        % the size of this matrix is (length(x_slices) x length(y_slices) x length(z_slices))
+                        % (optional)
+        %
+        %
+        %
+        % Outputs:
+                % slice_sets: A cell array containing all of the points
+                        % (x,y,z) that intersect with the current z slice. 
+                        % The size of this matrix is the same as the length of
+                        % z_slices
+                % slices_loops: A cell array containing the loop sets for
+                        % each slice. Where each cell contains a cell array with
+                        % all of the closed loops separated. % The size of this matrix
+                        % is the same as the length of z_slices
+                % slices_polygons: A cell array containing all of the
+                        % polygons for each slice. % The size of this matrix is the
+                        % same as the length of z_slices
+                % slices_bin_vol: The resulting binary matrix of all of the
+                        % slices of the geometry. The size is (length(x_slices)+1 x
+                        % length (y_slices)+1 x length (z_slices)). the
+                        % matrix contains a 1 wherever the voxel is
+                        % contained in a solid part of the original
+                        % geometry, and a 0 wherever there is no geometry
+                        % present.
+                
+        if nargin < 5
+                x_spacing=x_slices(2)-x_slices(1);
+                y_spacing=y_slices(2)-y_slices(1);
+                z_spacing=z_slices(2)-z_slices(1);
+                max_bound_vertices=[x_slices(end),y_slices(end),z_slices(end)];
+                min_bound_vertices=[x_slices(1),y_slices(1),z_slices(1)];
+                
+                volume_pix_num=ceil((max_bound_vertices-min_bound_vertices)./[x_spacing,y_spacing,z_spacing]);
+                total_pix_num=volume_pix_num;
+                slice_bin_vol=false(total_pix_num(2)+1,total_pix_num(1)+1);
+                slices_bin_vol=logical(zeros(total_pix_num(2)+1,total_pix_num(1)+1,length(z_slices)));
+        end
         %% Create Slices
         plane_vec=[0,0,1]';
         slice_sets={};
         parfor count_slice=1:length(z_slices)
         % for count_slice=1:length(z_slices)
                 plane_point=[0,0,z_slices(count_slice)];
-                current_vertex=geom_rot.vertices-plane_point;
+                current_vertex=geom.vertices-plane_point;
                 vert_dir=sign(current_vertex*plane_vec);
                 elems_list=[];
                 % the following lines determine all element with either a a vertext
                 % on the plane, or part of the face cuts the plane
-                for count_elems=1:size(geom_rot.faces,1)
-                        nodel=geom_rot.faces(count_elems,:);
+                for count_elems=1:size(geom.faces,1)
+                        nodel=geom.faces(count_elems,:);
                         if vert_dir(nodel(1)) ~= vert_dir(nodel(2)) || ...
                                         vert_dir(nodel(2)) ~= vert_dir(nodel(3))
-                                elems_list=[elems_list;geom_rot.faces(count_elems,:)];
+                                elems_list=[elems_list;geom.faces(count_elems,:)];
                         elseif vert_dir(nodel(1)) ==0 &&...
                                         vert_dir(nodel(2)) ==0 &&...
                                         vert_dir(nodel(3)) ==0
-                                elems_list=[elems_list;geom_rot.faces(count_elems,:)];
+                                elems_list=[elems_list;geom.faces(count_elems,:)];
                         end
                 end
                 % have a list of all elements that cut the current plane
@@ -29,7 +102,7 @@ sliceGeomAlongZ(geom_rot,x_slices, y_slices,z_slices,slice_bin_vol,slices_bin_vo
                 counter=1;
                 for count_elems_plane=1:size(elems_list,1)
                         nodel=elems_list(count_elems_plane,:);
-                        temp_vertices=geom_rot.vertices(nodel,:);
+                        temp_vertices=geom.vertices(nodel,:);
                         current_vert_dir=vert_dir(nodel);
                          % the following statements check if the vertex is on the
                          % plane

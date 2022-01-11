@@ -21,7 +21,7 @@ vmin=min(geom2.vertices);
 vmax=max(geom2.vertices);
 
 %% define Slice Direction
-slice_direction_z=[0,1,0];
+slice_direction_z=[.5,.25,0];
 slice_direction_z=slice_direction_z/norm(slice_direction_z);
 
 
@@ -331,15 +331,15 @@ for count_current_slice=1:length(slice_sets)
         end
 end
 %% plot slices
-% disp('total Image binarization time');
-% 
-% slice_figure=figure('WindowState','Maximized');
-% for counti=1:size(slices_bin_vol,3)
-%       
-%       slice_plot=imshow(slices_bin_vol(:,:,counti),'Parent',gca);
-% %       slice_figure.set('WindowState','Maximized');
-%       pause(.001);
-% end
+disp('total Image binarization time');
+
+slice_figure=figure('WindowState','Maximized');
+for counti=1:size(slices_bin_vol,3)
+      
+      slice_plot=imshow(slices_bin_vol(:,:,counti),'Parent',gca);
+%       slice_figure.set('WindowState','Maximized');
+      pause(.001);
+end
 
 %% Save current set
 save([filename,'sliced.mat'],'slices_bin_vol','slices_polygons','slices_loops',...
