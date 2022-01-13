@@ -134,7 +134,7 @@ for geom_count=1:length(filenames)
         % and pixel reolution has been previously determined.
 
 
-        [slice_sets,slices_loops,slices_polygons,polygon_inside_mat,tree_array,slices_bin_vol]=...
+        [slice_sets,slices_loops,slices_polygons,slices_bin_vol]=...
         sliceGeomAlongZ(geom_rot,x_slices, y_slices,z_slices,slice_bin_vol,slices_bin_vol);
 
         if use_count_color

@@ -1,4 +1,24 @@
 function [quality_indexes,min_angles]=getMeshQuality(faces,nodes)
+        %% Function to calculate the quality of a given triangulated Mesh
+        % Created by Thor Andreassen
+        % 1/10/22
+        %
+        % This function takes in a triangulated mesh as a series of faces
+        % and nodes, and returns the corresponding quality indexes as the
+        % angles of the 3 sides of every face, as well as the minimum angle
+        % of the entire face.
+        %
+        % Inputs:
+                % faces: (n x 3) matrix of connections of nodes defined by
+                        % corner node indices for a triangulated mesh
+                % nodes: (mx3) matrix of node coordinates (x, y, z) with each row
+                        % corresponding to the assumed node number and
+                        % corresponding to the nodes used in the "faces" input
+        % Outputs:
+                % quality_indexes: A vector of (3M x 1) containing the
+                        % angles of each of the sides of every face of a mesh.
+                % min_angles: A vector of (M x 1) containing the
+                        %  minimum angles of each of every face of a mesh.
         quality_indexes=zeros(size(faces,1)*3,1);
         min_angles=zeros(size(faces,1),1);
         for count_face=1:size(faces,1)

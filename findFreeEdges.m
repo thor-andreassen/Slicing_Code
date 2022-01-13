@@ -1,4 +1,6 @@
 function [free_edges,watertight] = findFreeEdges(edges)
+        % Created by Thor Andreassen
+        % 1/10/22
         % Function to determine free edges of mesh and if mesh is
         % watertight
         % function takes in a matrix of edge connections as a (n x 2)

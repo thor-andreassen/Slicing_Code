@@ -1,99 +1,89 @@
-function [slice_sets,slices_loops,slices_polygons,polygon_inside_mat,tree_array,slices_bin_vol]=...
-sliceGeomAlongZ(geom_rot,x_slices, y_slices,z_slices,slice_bin_vol,slices_bin_vol)
-
-        %% Create Slices
-        plane_vec=[0,0,1]';
-        slice_sets={};
-        parfor count_slice=1:length(z_slices)
-        % for count_slice=1:length(z_slices)
-                plane_point=[0,0,z_slices(count_slice)];
-                current_vertex=geom_rot.vertices-plane_point;
-                vert_dir=sign(current_vertex*plane_vec);
-                elems_list=[];
-                % the following lines determine all element with either a a vertext
-                % on the plane, or part of the face cuts the plane
-                for count_elems=1:size(geom_rot.faces,1)
-                        nodel=geom_rot.faces(count_elems,:);
-                        if vert_dir(nodel(1)) ~= vert_dir(nodel(2)) || ...
-                                        vert_dir(nodel(2)) ~= vert_dir(nodel(3))
-                                elems_list=[elems_list;geom_rot.faces(count_elems,:)];
-                        elseif vert_dir(nodel(1)) ==0 &&...
-                                        vert_dir(nodel(2)) ==0 &&...
-                                        vert_dir(nodel(3)) ==0
-                                elems_list=[elems_list;geom_rot.faces(count_elems,:)];
-                        end
-                end
-                % have a list of all elements that cut the current plane
-                points_vec=[];
-                segments_vec={};
-                counter=1;
-                for count_elems_plane=1:size(elems_list,1)
-                        nodel=elems_list(count_elems_plane,:);
-                        temp_vertices=geom_rot.vertices(nodel,:);
-                        current_vert_dir=vert_dir(nodel);
-                         % the following statements check if the vertex is on the
-                         % plane
-        %                 if current_vert_dir(1)==0
-        %                         points_vec=[points_vec;temp_vertices(1,:)];
-        %                 end
-        %                 if current_vert_dir(2)==0
-        %                         points_vec=[points_vec;temp_vertices(2,:)];
-        %                 end
-        %                 if current_vert_dir(3)==0
-        %                         points_vec=[points_vec;temp_vertices(3,:)];
-        %                 end
-                        % the following lines determine where the edge interesects
-                        % the plane
-                        current_pt=[];
-                        if current_vert_dir(1) ~= current_vert_dir(2)
-                                intersect_point_x=interp1([temp_vertices(1,3),temp_vertices(2,3)],...
-                                        [temp_vertices(1,1),temp_vertices(2,1)],z_slices(count_slice));
-                                intersect_point_y=interp1([temp_vertices(1,3),temp_vertices(2,3)],...
-                                        [temp_vertices(1,2),temp_vertices(2,2)],z_slices(count_slice));
-                                intersect_point=[intersect_point_x,intersect_point_y,z_slices(count_slice)];
-                                points_vec=[points_vec;intersect_point];
-                                current_pt=[current_pt;intersect_point];
-                        end
-                        if current_vert_dir(1) ~= current_vert_dir(3)
-                                intersect_point_x=interp1([temp_vertices(1,3),temp_vertices(3,3)],...
-                                        [temp_vertices(1,1),temp_vertices(3,1)],z_slices(count_slice));
-                                intersect_point_y=interp1([temp_vertices(1,3),temp_vertices(3,3)],...
-                                        [temp_vertices(1,2),temp_vertices(3,2)],z_slices(count_slice));
-                                intersect_point=[intersect_point_x,intersect_point_y,z_slices(count_slice)];
-                                points_vec=[points_vec;intersect_point];
-                                current_pt=[current_pt;intersect_point];
-                        end
-                        if current_vert_dir(2) ~= current_vert_dir(3)
-                                intersect_point_x=interp1([temp_vertices(2,3),temp_vertices(3,3)],...
-                                        [temp_vertices(2,1),temp_vertices(3,1)],z_slices(count_slice));
-                                intersect_point_y=interp1([temp_vertices(2,3),temp_vertices(3,3)],...
-                                        [temp_vertices(2,2),temp_vertices(3,2)],z_slices(count_slice));
-                                intersect_point=[intersect_point_x,intersect_point_y,z_slices(count_slice)];
-                                points_vec=[points_vec;intersect_point];
-                                current_pt=[current_pt;intersect_point];
-                        end
-                        if ~isempty(current_pt)
-                                segments_vec{counter}=current_pt;
-                                counter=counter+1;
-                        end
-                end
-        %         if ~isempty(points_vec)
-        %                 clf
-        %                 plot(points_vec(:,1),points_vec(:,2),'ro');
-        %                 xlim([min_bound_vertices(1), max_bound_vertices(1)]);
-        %                 ylim([min_bound_vertices(2), max_bound_vertices(2)]);
-        %                 axis equal
-        %                 hold on
-        %                 current_slice=segments_vec;
-        %                 for count_segment=1:length(current_slice)
-        %                         line_segment=current_slice{count_segment};
-        %                         plot(line_segment(:,1),line_segment(:,2),'k');
-        %                         hold on
-        %                 end
-        %                 pause(.001);
-        %         end
-                slice_sets{count_slice}=segments_vec;
+function [slice_sets,slices_loops,slices_polygons,slices_bin_vol]=...
+sliceGeomAlongZ(geom,x_slices, y_slices,z_slices,slice_bin_vol,slices_bin_vol)
+        %% Main Slicing Function to slice a geometry according to the slice parameters and create a binary mesh
+        % Created by Thor Andreassen
+        % 1/10/22
+        %
+        %
+        % This function uses a series of steps to slice a geometry into a series of binary matrices
+        % The function takes in a geometry that is assumed to be aligned
+        % with the desired slice direction as the "z-direction" of the
+        % mesh, and then takes in parameters defining the mesh slices
+        % locations. The result is a set of slice geometries and contour
+        % polygons as well as a matrix of binary values for regions
+        % "inside" and "outside" the slice.
+        %
+        %
+        % Inputs:
+                % geom: a structure defining the current mesh surface to be
+                        % sliced as the following:
+                                % geom.faces = (n x 3) connectivity list of
+                                        % triangulated mesh curfaces defining the
+                                        % corner nodes of each face as a row
+                                % geom.vertices = (m x 3) matrix of x, y, z
+                                        % coordinates of all vertices/nodes used to
+                                        % define the mesh surface. Each row
+                                        % corresponds to the node number of the
+                                        % mesh defined in "faces"
+                % x_slices: a vector containing all of the x coordinates to
+                        % turn into the x- spacing pixels of the final image.
+                % y_slices: a vector containing all of the y coordinates to
+                        % turn into the y- spacing pixels of the final image.
+                % z_slices: a vector containing all of the z coordinates
+                        % that define the resulting slices of the algorithm
+                % slice_bin_vol: a previously define binary logic matrix
+                        % representing a single slice of the resulting slices
+                        % the size of this matrix is (length(x_slices) x length(y_slices))
+                        % (optional)
+                % slices_bin_vol a previously define binary logic matrix
+                        % representing all of the slice values of the resulting slices
+                        % the size of this matrix is (length(x_slices) x length(y_slices) x length(z_slices))
+                        % (optional)
+        %
+        %
+        %
+        % Outputs:
+                % slice_sets: A cell array containing all of the points
+                        % (x,y,z) that intersect with the current z slice. 
+                        % The size of this matrix is the same as the length of
+                        % z_slices
+                % slices_loops: A cell array containing the loop sets for
+                        % each slice. Where each cell contains a cell array with
+                        % all of the closed loops separated. % The size of this matrix
+                        % is the same as the length of z_slices
+                % slices_polygons: A cell array containing all of the
+                        % polygons for each slice. % The size of this matrix is the
+                        % same as the length of z_slices
+                % slices_bin_vol: The resulting binary matrix of all of the
+                        % slices of the geometry. The size is (length(x_slices)+1 x
+                        % length (y_slices)+1 x length (z_slices)). the
+                        % matrix contains a 1 wherever the voxel is
+                        % contained in a solid part of the original
+                        % geometry, and a 0 wherever there is no geometry
+                        % present.
+                        
+                        % the following line is used to initialize the
+                        % outputs if they are not previously passed in from
+                        % an additive matrix from the calling function.
+        if nargin < 5
+                x_spacing=x_slices(2)-x_slices(1);
+                y_spacing=y_slices(2)-y_slices(1);
+                z_spacing=z_slices(2)-z_slices(1);
+                max_bound_vertices=[x_slices(end),y_slices(end),z_slices(end)];
+                min_bound_vertices=[x_slices(1),y_slices(1),z_slices(1)];
+                
+                volume_pix_num=ceil((max_bound_vertices-min_bound_vertices)./[x_spacing,y_spacing,z_spacing]);
+                total_pix_num=volume_pix_num;
+                slice_bin_vol=false(total_pix_num(2)+1,total_pix_num(1)+1);
+                slices_bin_vol=logical(zeros(total_pix_num(2)+1,total_pix_num(1)+1,length(z_slices)));
         end
+        %% Create Slices
+        % the following section is the main portion of the code to slice
+        % the geometry along z_Sliced planes by determining the
+        % intersection between the faces of the mesh and a plane made at
+        % the current slice.
+        use_parallel=1;
+        [slice_sets]=getSliceSetsInZ(geom,z_slices,use_parallel);
         %% create boundaries plots
         % for count_slice=185%1:length(slice_sets)
         %         
@@ -111,10 +101,28 @@ sliceGeomAlongZ(geom_rot,x_slices, y_slices,z_slices,slice_bin_vol,slices_bin_vo
         %         pause(.001)
         % end
 
+        
+       
         %% determine segments for slice
+        % the following section is the main piece of the code that takes
+        % the sliced coordinates across the geometry, and converts it to
+        % closed regions that are then binarized accordingly.
         for count_current_slice=1:length(slice_sets)
+                
                 current_slice=slice_sets{count_current_slice};
-
+                
+                % the following section of code is used to take the set of
+                % nodes from the line edges of the slice, and convert them
+                % to a series of "new nodes" with edges defined as
+                % connecting the set of node numbers together, instead of
+                % as 2 sets of (x, y, z) coordinates. The loop goes through
+                % each node vertex in the list of line segments, and if the
+                % node coordinates already exist in the assigned list of
+                % nodes, it assigns the node number to it, and continues.
+                % If it does not already exist, it creates a new node as
+                % the next integer in the list, and adds the connection.
+                % This is done for both ends of each line segment, and then
+                % repeats for each line segment.
                 plane_vertex=[];
                 plane_segment_ids=[];
                 slice_empty=0;
@@ -147,6 +155,12 @@ sliceGeomAlongZ(geom_rot,x_slices, y_slices,z_slices,slice_bin_vol,slices_bin_vo
                         slice_empty=1;
                 end
                 %% Create loop segments
+                % the following section of code works on the list of node
+                % connections, and not the vertex coordinates themselves,
+                % and determines the closed set of loops defined by those
+                % nodes. The loop goes through each slice and calls the
+                % separate function getClosedLoops to find the closed
+                % sections.
                 if ~slice_empty
                         plane_segment_ids=unique(plane_segment_ids,'rows');
                         for count_ids=size(plane_segment_ids,1):-1:1
@@ -167,6 +181,10 @@ sliceGeomAlongZ(geom_rot,x_slices, y_slices,z_slices,slice_bin_vol,slices_bin_vo
                         end
                 end
                 %% Create Loop Node List
+                % the following set of code takes the previously determined
+                % set of closed loops from the nodes, and converts them to
+                % closed sets of x,y,z vertices based on teh nodes and
+                % their coordinates.
                 if ~slice_empty
                         loop_nodes_segments={};
                         for counti=1:length(loop_segments)
@@ -182,6 +200,10 @@ sliceGeomAlongZ(geom_rot,x_slices, y_slices,z_slices,slice_bin_vol,slices_bin_vo
         %                 end
 
                         %% create polygons
+                        % the following lines create matlab polygon shapes
+                        % based on the closed loop vertices, so as to allow
+                        % easy checking for nodes inside and outside the
+                        % polygons.
                         clear slice_polygons
                         for counti_loops=1:length(loop_nodes_segments)
                               slice_polygons(counti_loops)=polyshape(loop_nodes_segments{counti_loops}(:,1),loop_nodes_segments{counti_loops}(:,2));
@@ -195,6 +217,17 @@ sliceGeomAlongZ(geom_rot,x_slices, y_slices,z_slices,slice_bin_vol,slices_bin_vo
                                 slices_polygons{count_current_slice}=slice_polygons;
                         end
                         %% Determine Polygons inside
+                        % the following loops determine for the current
+                        % slice which of the closed loop polygons appears
+                        % in which of the others. The loop goes through
+                        % each of the polygons, (assuming they are
+                        % different) and creates a matrix that describes if
+                        % the polygon is completely contained within the
+                        % other polygon. If it is, then there is a 1 in
+                        % that space and if not, there is a 0. This matrix
+                        % can then be used to determine whether a given
+                        % polygon should be "filled" or whether it is an
+                        % internal hole.
                         polygon_inside_mat=[];
                         if exist('slice_polygons','var')
                                 polygon_inside_mat=zeros(length(slice_polygons));
@@ -214,7 +247,15 @@ sliceGeomAlongZ(geom_rot,x_slices, y_slices,z_slices,slice_bin_vol,slices_bin_vo
                         polygon_inside_mat2=polygon_inside_mat;
                         max_iters=100;
                         counter=1;
-
+                        
+                        % the following takes the previously created
+                        % matrix of "inside" polygons for the current
+                        % slice, and breaks it apart into which polygons
+                        % are direclty inside of which. In particular it
+                        % then determine based on the number of polygons it
+                        % is inside, the rank of the polygon and
+                        % subsequently whether the polygon is "filled" or
+                        % "unfilled".
                         tree_array=zeros(length(polygon_inside_mat2),1);
                         while sum(sum(polygon_inside_mat2))>0 && counter<max_iters
                                 for count_poly=1:length(polygon_inside_mat2)
@@ -237,6 +278,9 @@ sliceGeomAlongZ(geom_rot,x_slices, y_slices,z_slices,slice_bin_vol,slices_bin_vo
         %                 text(tx+0.02,ty,num2cell([1:length(tree_array)]))
 
                         %% Determine Polygon Type
+                        % the following determine the rank/level of the
+                        % given polygon which is used to determine the
+                        % color based on whether it is odd or even.
                         rank_array=tree_array;
                         for count_poly=1:length(tree_array)
                                 current_lev=tree_array(count_poly);
@@ -251,6 +295,10 @@ sliceGeomAlongZ(geom_rot,x_slices, y_slices,z_slices,slice_bin_vol,slices_bin_vo
         %                 poly_shading_array=mod(rank_array+1,2);
 
                         %% Create Image
+                        % the following line calls a function that takes
+                        % the set of polygons and the chosen slice
+                        % dimensions to create a single binary image for
+                        % the slice.
                         if exist('slice_polygons','var')
                                 if ~isempty(slice_polygons)
                                         treemat=zeros(length(tree_array));
