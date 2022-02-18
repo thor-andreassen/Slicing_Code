@@ -11,7 +11,9 @@ if load_stl==1
 %                 'VHFL_Muscle_VastusLateralis.stl',...
 %                 'VHFL_Muscle_VastusIntermedius.stl',...
 %                 'VHFL_Muscle_RectusFemoris.stl'};
-        filenames={'VHFL_Left_Bone_Femur.stl'};
+%         filenames={'VHFL_Left_Bone_Femur.stl'};
+        filenames={'glut_med_test_1d0_nodal_smooth.stl',...
+            'glut_max_test_1d0_nodal_smooth.stl'};
         for geom_count=1:length(filenames)
                 filename=char(filenames{geom_count});
                 geom=stlread(char(filename));

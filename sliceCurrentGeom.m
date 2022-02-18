@@ -14,7 +14,7 @@ function [filenames_created,slices_bin_vol]=sliceCurrentGeom(geom,GCS_to_SliceAl
         % x, y, z, location is > 0, and the corresponding slice thicknesses,
         % and pixel reolution has been previously determined.
         [slice_sets,slices_loops,slices_polygons,slices_bin_vol]=...
-                sliceGeomAlongZ(geom_rot,x_slices, y_slices,z_slices,slice_bin_vol,slices_bin_vol);
+                sliceGeomAlongZ(geom_rot,x_slices, y_slices,z_slices,slice_bin_vol,slices_bin_vol*0);
 
         if use_count_color
                 output_slices_8bit=uint8(slices_bin_vol*geom_count_color);
