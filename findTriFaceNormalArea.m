@@ -1,4 +1,4 @@
-function [face_normal,face_area,face_centroid]=findTriFaceNormalArea(face_nodes)
+function [face_normal,face_normal_unit,face_area,face_centroid]=findTriFaceNormalArea(face_nodes)
 %% Function to calculate area and normal of Tri Element
 % Created by Thor Andreassen
 % 1/8/22
@@ -32,7 +32,8 @@ function [face_normal,face_area,face_centroid]=findTriFaceNormalArea(face_nodes)
         vec1_norm=vec1/norm(vec1);
         vec2=face_nodes(3,:)-face_nodes(1,:);
         vec2_norm=vec2/norm(vec2);
-        face_area=(0.5)*det([1,1,1;vec1;vec2]);
-        face_normal=cross(vec1_norm,vec2_norm)/norm(cross(vec1_norm,vec2_norm));
+        face_area=abs((0.5)*det([1,1,1;vec1;vec2]));
+        face_normal=cross(vec1_norm,vec2_norm);
+        face_normal_unit=face_normal/norm(face_normal);
         face_centroid=mean(face_nodes);
 end
