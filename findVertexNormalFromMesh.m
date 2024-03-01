@@ -26,11 +26,9 @@ function vertex_normal=findVertexNormalFromMesh(faces,nodes,node_num)
         for count_face=1:length(faces_with_node)
                 nodel=faces(faces_with_node(count_face),:);
                 face_pts=nodes(nodel,:);
-                [face_normal,face_area]=findTriFaceNormalArea(face_pts);
-                total_area=total_area+face_area;
-                vertex_normal=vertex_normal+total_area*face_normal;
+                [face_normal]=findTriFaceNormalArea(face_pts);
+                vertex_normal=vertex_normal+face_normal;
         end
-        vertex_normal=vertex_normal/total_area;
         vertex_normal=vertex_normal/norm(vertex_normal);
 
 end
